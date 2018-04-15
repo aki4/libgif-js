@@ -13,6 +13,7 @@ The gif has to be on the same domain (and port and protocol) as the page you're 
 
 The library works by parsing gif image data in js, extracting individual frames, and rendering them on a canvas element. There is no way to get the raw image data from a normal image load, so this library does an XHR request for the image and forces the MIME-type to "text/plain". Consequently, using this library is subject to all the same cross-domain restrictions as any other XHR request.
 
-## Used code
+## Used libraries
+
 1. jsgif (Gif encoder, LZW encoder, NeuQuant algorithm) - https://github.com/antimatter15/jsgif
 2. lingif-js (gif import to canvas) - https://github.com/buzzfeed/libgif-js 
