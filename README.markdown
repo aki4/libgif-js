@@ -5,8 +5,6 @@ This is the fork of buzzfeed's libgif-js https://github.com/buzzfeed/libgif-js (
 This repository contains example of gif to canvas loading and canvas to gif export with custom delay for each frame support.
 It works correctly only with one gif per canvas.
 
-Forked from the excelent jsgif project (, which was implemented as a bookmarklet to manipulate animated gifs (http://slbkbs.org/jsgif).
-
 ## Caveat: same-domain origin (important!)
 
 The gif has to be on the same domain (and port and protocol) as the page you're loading.
