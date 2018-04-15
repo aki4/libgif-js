@@ -1,43 +1,132 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-
+<!DOCTYPE html>
+<html>
 	<head>
-		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-		<script type="text/javascript" src="./libgif.js"></script>
-		<script type="text/javascript" src="./rubbable.js"></script>
-		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
-		<title>
-			Example gif
-		</title>
+	    <script src="lib/lzwEncoder.js"></script>
+	    <script src="lib/neuQuant.js"></script>
+	    <script src="lib/gifEncoder.js"></script>
+		<script src="lib/libGif.js"></script>
 	</head>
 
 	<body>
-		<center>
-			<h1>Example with controls and no auto-play</h1>
-			<img id="example1" src="./example_gifs/rub_test_preview.jpg" rel:animated_src="./example_gifs/rub_test.gif" rel:auto_play="0" width="467" height="375" />
-			<br>
-			<script type="text/javascript">
-				var sup1 = new SuperGif({ gif: document.getElementById('example1') } );
-				sup1.load();
-			</script>
-			<a href="javascript:;" onmousedown="sup1.pause(); return false;">Pause</a> |
-			<a href="javascript:;" onmousedown="sup1.play(); return false;">Play</a> |
-			<a href="javascript:;" onmousedown="sup1.move_to(0); return false;">Restart</a> |
-			<a href="javascript:;" onmousedown="sup1.move_relative(1); return false;">Step forward</a> |
-			<a href="javascript:;" onmousedown="sup1.move_relative(-1); return false;">Step back</a>
+		<canvas id="main-canvas" width="800" height="600"></canvas>
+		<a href="#" id="download" onclick="saveGif()">MAKE A GIF</a>
+		<script type="text/javascript">
 
-			<h1>Example with rubbing and auto-play on</h1>
-			<img id="example2" src="./example_gifs/rub_test.gif" rel:auto_play="1" width="467" height="375" rel:rubbable="1" />
-			<br>
-			<script type="text/javascript">
-				var sup2 = new RubbableGif({ gif: document.getElementById('example2') } );
-				sup2.load();
-			</script>
+			function encodeImageFileAsURL(element) {
+				var file = element.files[0];
+				var reader = new FileReader();
+				reader.onloadend = function() {
+					console.log('RESULT', reader.result)
+				}
+				reader.readAsDataURL(file);
+			}
+			encodeImageFileAsURL
 
-			<br><br>
-			<p>Image via <a href="http://mlkshk.com/p/IP08">mlkshk</a></p>
-		</center>
+			var canvas = document.getElementById('main-canvas');
+			var context = canvas.getContext('2d');
+			
+			const bgImage = new Image();
+		    bgImage.src = 'img/bg.jpg';
 
+			const topImage = new Image();
+			topImage.src = 'img/top.png';
+
+			let framesInfo = {};
+
+			const bytesToBase64 = bytes => {
+				let output = '', i = 0, l = bytes.length, chars = [], enc1, enc2, enc3, enc4,
+				key = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+				while (i < l) {
+					chars = [bytes.charCodeAt(i++), bytes.charCodeAt(i++), bytes.charCodeAt(i++)];
+					enc1 = chars[0] >> 2;
+					enc2 = ((chars[0] & 3) << 4) | (chars[1] >> 4);
+					enc3 = ((chars[1] & 15) << 2) | (chars[2] >> 6);
+					enc4 = chars[2] & 63;
+					if (isNaN(chars[1])) enc3 = enc4 = 64;
+					else if (isNaN(chars[2])) enc4 = 64;
+					output += `${key.charAt(enc1)}${key.charAt(enc2)}${key.charAt(enc3)}${key.charAt(enc4)}`;
+				}
+				return output;
+			}
+
+			const createGif = options => {
+				let encoder = new GIFEncoder();
+				let ctx = options.canvas.getContext('2d');
+
+				encoder.setRepeat(options.repeatTimes || 0); // 0 is for auto-loop
+				encoder.setDelay(20); //~60FPS
+				encoder.setSize(options.canvas.width, options.canvas.height);
+
+				let frame = 0;
+
+				const stepFrame = () => {
+					if(options.frames && options.frames[frame] && options.frames[frame].delayTime) {
+						encoder.setDelay(options.frames[frame].delayTime * 10);
+					}
+					if (frame >= options.frames.length) {
+						encoder.finish();
+						let bytes = bytesToBase64(encoder.stream().getData());
+						options.onDone && options.onDone('data:image/gif;base64,', bytes);
+						return;
+					}
+
+					requestAnimationFrame(stepFrame);
+					options.onFrameDraw(ctx, frame);
+					encoder.addFrame(ctx);
+					frame++;
+				};
+
+				encoder.start();
+				stepFrame();
+			}
+
+			const onGifLoadError = error => {
+				console.log(error);
+			}
+
+			const onGifLoadCompleted = info => {
+				framesInfo = info;
+				console.log('Load completed. You can disable your loader animation or etc.');
+			}
+
+			const onGifCreated = (header, gifByteArray) => {
+				console.log('Gif is generated.');
+
+				gif.play();
+
+    			var img = document.createElement('img');
+				document.body.appendChild(img);
+    			img.src = header + gifByteArray;
+			}
+
+			const appDrawLoop = (ctx, image) => {
+				ctx.drawImage(bgImage, 0, 0);
+				ctx.drawImage(image, 100,100);
+				ctx.drawImage(topImage, 0, 0);
+			}
+
+			const saveGif = () => {
+				gif.pause();
+
+				createGif({
+					canvas: canvas,
+					frames: framesInfo.frames,
+					onFrameDraw: (ctx, frame) => gif.moveToFrame(frame),
+					onDone: onGifCreated
+				});
+			}
+
+			var gif = new GifObject({ 
+				canvas: canvas,
+				url: 'img/file.gif',
+				drawWhileLoading: false,
+				autoPlay: true,
+				offset: {x: 0, y: 0},
+				onDraw: appDrawLoop,
+				onError: onGifLoadError
+			});
+
+			gif.load(onGifLoadCompleted);
+		</script>
 	</body>
-
 </html>
